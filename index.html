@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furniture AR Store</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- YOUR ORIGINAL CSS (KEPT INTACT) --- */
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: #f8f9fa;
+        }
+        .navbar {
+            background: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            padding: 10px 0; /* Slightly adjusted padding for mobile breathing room */
+        }
+        .hero {
+            height: 70vh;
+            background: url('https://images.unsplash.com/photo-1586023492125-27b2c045efd7') center/cover no-repeat;
+            display: flex;
+            align-items: center;
+            color: white;
+        }
+        .hero-overlay {
+            background: rgba(0,0,0,0.5);
+            padding: 30px;
+            border-radius: 10px;
+        }
+        .btn-main {
+            background: #FF6B35;
+            color: white;
+            border-radius: 30px;
+            padding: 10px 25px;
+            border: none;
+            white-space: nowrap; /* Prevents button text breaking on mobile */
+        }
+        .btn-main:hover {
+            background: #e85a2a;
+            color: white;
+        }
+        .product-card {
+            border-radius: 15px;
+            overflow: hidden;
+            transition: 0.3s;
+            background: #fff;
+        }
+        .product-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        .product-img {
+            height: 250px;
+            object-fit: cover;
+        }
+        .category-card {
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            background: #fff;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .category-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+        footer {
+            background: #2C2C2C;
+            color: white;
+            padding: 20px;
+        }
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: red;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2000;
+        }
+        .custom-toast {
+            background: rgba(255, 107, 53, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            animation: slideIn 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* --- NEW CSS FOR MODALS & PAYMENT --- */
+        .cart-item-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .quantity-btn {
+            cursor: pointer;
+            padding: 2px 8px;
+            background: #eee;
+            border: none;
+            border-radius: 4px;
+        }
+        .credit-card-box {
+            background: linear-gradient(135deg, #2C2C2C, #4a4a4a);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #FF6B35;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        /* Mobile Tweaks */
+        @media (max-width: 991px) {
+            .navbar-collapse {
+                margin-top: 15px;
+            }
+            .hero {
+                height: 50vh; /* Smaller hero on mobile */
+            }
+            .product-img {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ========================================== -->
+    <!-- UPDATED RESPONSIVE NAVBAR -->
+    <!-- ========================================== -->
+    <nav class="navbar navbar-expand-lg sticky-top">
+        <div class="container d-flex align-items-center">
+            <!-- 1. Brand (Left) -->
+            <a class="navbar-brand fw-bold me-2" href="#">FurniAR</a>
+            
+            <!-- 2. Cart & Toggler (Right - Always Visible on Mobile) -->
+            <div class="ms-auto d-flex align-items-center gap-2">
+                <button class="btn btn-main position-relative d-flex align-items-center" data-bs-toggle="modal" data-bs-target="#cartModal">
+                    <span class="d-lg-none me-1">🛒</span> <!-- Icon only on mobile -->
+                    <span class="d-none d-lg-inline me-1">Cart</span> <!-- Text on desktop -->
+                    <span class="cart-count" id="cartCount">0</span>
+                </button>
+                
+                <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent" aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
+
+            <!-- 3. Collapsible Content (Search Bar) -->
+            <div class="collapse navbar-collapse w-100 mt-3 mt-lg-0" id="navbarContent">
+                <!-- Added form and flex utilities to center the search on desktop -->
+                <form class="d-flex w-100 mx-auto" onsubmit="return false;">
+                    <input id="searchInput" class="form-control" type="search" placeholder="Search furniture..." aria-label="Search">
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <main>
+        <section class="hero">
+            <div class="container">
+                <div class="hero-overlay">
+                    <h1 class="display-5 fw-bold">Visualize Furniture in Your Room</h1>
+                    <p class="lead">Experience furniture with Augmented Reality</p>
+                    <a href="ar.html"><button class="btn btn-main mt-3">View in AR</button></a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Categories -->
+        <section class="container my-5">
+            <h3 class="mb-4 text-center">Categories</h3>
+            <div class="row g-3">
+                <div class="col-6 col-md-3">
+                    <div class="category-card h-100" onclick="filterByCategory('sofa')">🛋 Sofa</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="category-card h-100" onclick="filterByCategory('bed')">🛏 Bed</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="category-card h-100" onclick="filterByCategory('chair')">🪑 Chair</div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="category-card h-100" onclick="filterByCategory('table')">🪵 Table</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Products -->
+        <section class="container my-5">
+            <h3 class="mb-4 text-center">Featured Products</h3>
+            <div class="row g-4" id="productGrid">
+                <!-- Product 1 -->
+                <div class="col-md-6 col-lg-3 product-card" data-category="sofa" data-name="Modern Sofa" data-price="25000" data-img="https://images.unsplash.com/photo-1555041469-a586c61ea9bc">
+                    <img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc" class="w-100 product-img" loading="lazy">
+                    <div class="p-3">
+                        <h5>Modern Sofa</h5>
+                        <p>₹25,000</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-main" onclick="openAR('sofa.glb', 'Modern Sofa')">View in AR</button>
+                            <button class="btn btn-outline-dark" onclick="addToCart('Modern Sofa')">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Product 2 -->
+                <div class="col-md-6 col-lg-3 product-card" data-category="bed" data-name="Wooden Bed" data-price="18000" data-img="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85">
+                    <img src="https://images.unsplash.com/photo-1505693416388-ac5ce068fe85" class="w-100 product-img" loading="lazy">
+                    <div class="p-3">
+                        <h5>Wooden Bed</h5>
+                        <p>₹18,000</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-main" onclick="openAR('bed.glb', 'Wooden Bed')">View in AR</button>
+                            <button class="btn btn-outline-dark" onclick="addToCart('Wooden Bed')">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Product 3 -->
+                <div class="col-md-6 col-lg-3 product-card" data-category="table" data-name="Dining Table" data-price="12000" data-img="https://images.unsplash.com/photo-1588854337115-1c67d9247e4d">
+                    <img src="https://images.unsplash.com/photo-1588854337115-1c67d9247e4d" class="w-100 product-img" loading="lazy">
+                    <div class="p-3">
+                        <h5>Dining Table</h5>
+                        <p>₹12,000</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-main" onclick="openAR('table.glb', 'Dining Table')">View in AR</button>
+                            <button class="btn btn-outline-dark" onclick="addToCart('Dining Table')">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- Product 4 -->
+                <div class="col-md-6 col-lg-3 product-card" data-category="chair" data-name="Premium Wooden Chair" data-price="6500" data-img="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRFIHqcXapBx0U5J_bEmdhT0X18ePXUuTbidQ&s">
+                    <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRFIHqcXapBx0U5J_bEmdhT0X18ePXUuTbidQ&s" class="w-100 product-img" loading="lazy">
+                    <div class="p-3">
+                        <h5>Premium Wooden Chair</h5>
+                        <p>₹6,500</p>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-main" onclick="openAR('chair.glb', 'Premium Wooden Chair')">View in AR</button>
+                            <button class="btn btn-outline-dark" onclick="addToCart('Premium Wooden Chair')">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center mt-5">
+        <p>© 2026 FurniAR | AR Furniture Experience</p>
+    </footer>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- ========================================== -->
+    <!-- CART MODAL -->
+    <!-- ========================================== -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Your Cart</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="cartItemsContainer" class="d-flex flex-column gap-3" style="max-height: 300px; overflow-y: auto;">
+                        <p class="text-center text-muted py-3">Your cart is empty</p>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0 flex-column">
+                    <div class="d-flex justify-content-between w-100 fw-bold fs-5 mb-3">
+                        <span>Total:</span>
+                        <span id="cartTotal">₹0</span>
+                    </div>
+                    <button class="btn btn-main w-100" id="checkoutBtn" onclick="goToCheckout()" disabled>Proceed to Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PAYMENT MODAL -->
+    <!-- ========================================== -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Secure Payment</h5>
+                    <button type="button" class="btn-close" id="closePaymentBtn" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    
+                    <form id="paymentForm" onsubmit="processPayment(event)">
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">Delivery Address</label>
+                            <textarea class="form-control" rows="2" required placeholder="Enter full address"></textarea>
+                        </div>
+                        
+                        <div class="credit-card-box mb-3">
+                            <div class="d-flex justify-content-between mb-3">
+                                <span>Credit Card</span>
+                                <span>💳</span>
+                            </div>
+                            <div class="h5 mb-1" id="displayCardNum">•••• •••• •••• ••••</div>
+                            <div class="d-flex justify-content-between small opacity-75">
+                                <span id="displayCardName">YOUR NAME</span>
+                                <span id="displayExpiry">MM/YY</span>
+                            </div>
+                        </div>
+
+                        <div class="row g-2">
+                            <div class="col-12 mb-2">
+                                <label class="form-label small">Card Number</label>
+                                <input type="text" class="form-control" id="cardNumber" placeholder="0000 0000 0000 0000" maxlength="19" required oninput="updateCardDisplay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label small">Expiry</label>
+                                <input type="text" class="form-control" id="cardExpiry" placeholder="MM/YY" maxlength="5" required oninput="updateCardDisplay()">
+                            </div>
+                            <div class="col-6 mb-2">
+                                <label class="form-label small">CVV</label>
+                                <input type="password" class="form-control" placeholder="123" maxlength="3" required>
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label small">Cardholder Name</label>
+                                <input type="text" class="form-control" id="cardName" placeholder="John Doe" required oninput="updateCardDisplay()">
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-main" id="payButton">
+                                <span id="payText">Pay <span id="payAmountDisplay">₹0</span></span>
+                                <div class="loader ms-2" id="paymentLoader"></div>
+                            </button>
+                        </div>
+                    </form>
+
+                    <div id="paymentSuccess" class="text-center py-4" style="display: none;">
+                        <div style="font-size: 3rem; color: #28a745; margin-bottom: 10px;">✓</div>
+                        <h5 class="fw-bold">Payment Successful!</h5>
+                        <p class="text-muted small">Thank you for your order.</p>
+                        <button class="btn btn-outline-dark btn-sm mt-2" onclick="closeModals()">Continue Shopping</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // JAVASCRIPT LOGIC
+        // ==========================================
+
+        let cart = JSON.parse(localStorage.getItem('furniCart')) || [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateCartUI();
+            setupSearch();
+        });
+
+        // 1. SEARCH FUNCTIONALITY
+        function setupSearch() {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                const products = document.querySelectorAll('.product-card');
+                
+                products.forEach(card => {
+                    const name = card.getAttribute('data-name').toLowerCase();
+                    if (name.includes(term)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // 2. CATEGORY FILTER
+        function filterByCategory(category) {
+            document.getElementById('searchInput').value = ''; // Reset search
+            
+            const products = document.querySelectorAll('.product-card');
+            products.forEach(product => {
+                if (category === 'all' || product.dataset.category === category) {
+                    product.style.display = 'block';
+                } else {
+                    product.style.display = 'none';
+                }
+            });
+            
+            // Close mobile menu if open
+            const navbarCollapse = document.getElementById('navbarContent');
+            if (navbarCollapse.classList.contains('show')) {
+                const bsCollapse = new bootstrap.Collapse(navbarCollapse);
+                bsCollapse.hide();
+            }
+        }
+
+        // 3. AR LOGIC
+        function openAR(model, productName) {
+            localStorage.setItem("model", model);
+            localStorage.setItem("productName", productName);
+            window.location.href = "ar.html";
+        }
+
+        // 4. CART LOGIC
+        function addToCart(productName) {
+            const card = document.querySelector(`.product-card[data-name="${productName}"]`);
+            const price = parseInt(card.getAttribute('data-price'));
+            const img = card.getAttribute('data-img');
+            
+            const existingItem = cart.find(item => item.name === productName);
+
+            if (existingItem) {
+                existingItem.qty++;
+            } else {
+                cart.push({ name: productName, price: price, img: img, qty: 1 });
+            }
+
+            saveCart();
+            updateCartUI();
+            showToast(`${productName} added to cart!`);
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            saveCart();
+            updateCartUI();
+        }
+
+        function updateQty(index, change) {
+            cart[index].qty += change;
+            if (cart[index].qty <= 0) {
+                removeFromCart(index);
+            } else {
+                saveCart();
+                updateCartUI();
+            }
+        }
+
+        function saveCart() {
+            localStorage.setItem('furniCart', JSON.stringify(cart));
+        }
+
+        function updateCartUI() {
+            const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+            document.getElementById('cartCount').textContent = totalQty;
+
+            const container = document.getElementById('cartItemsContainer');
+            const totalEl = document.getElementById('cartTotal');
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            
+            container.innerHTML = '';
+            let totalPrice = 0;
+
+            if (cart.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted py-3">Your cart is empty</p>';
+                checkoutBtn.disabled = true;
+            } else {
+                checkoutBtn.disabled = false;
+                cart.forEach((item, index) => {
+                    totalPrice += item.price * item.qty;
+                    container.innerHTML += `
+                        <div class="d-flex align-items-center gap-3 p-2 border rounded bg-white">
+                            <img src="${item.img}" class="cart-item-img">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 small fw-bold">${item.name}</h6>
+                                <small class="text-muted">₹${item.price.toLocaleString()}</small>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="quantity-btn" onclick="updateQty(${index}, -1)">-</button>
+                                <span class="small fw-bold" style="width:15px; text-align:center">${item.qty}</span>
+                                <button class="quantity-btn" onclick="updateQty(${index}, 1)">+</button>
+                            </div>
+                            <button class="btn btn-sm text-danger" onclick="removeFromCart(${index})">&times;</button>
+                        </div>
+                    `;
+                });
+            }
+            totalEl.textContent = '₹' + totalPrice.toLocaleString();
+            document.getElementById('payAmountDisplay').textContent = '₹' + totalPrice.toLocaleString();
+        }
+
+        // 5. PAYMENT LOGIC
+        const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
+        const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+
+        function goToCheckout() {
+            cartModal.hide();
+            setTimeout(() => paymentModal.show(), 300);
+        }
+
+        function processPayment(e) {
+            e.preventDefault();
+            
+            const btn = document.getElementById('payButton');
+            const txt = document.getElementById('payText');
+            const loader = document.getElementById('paymentLoader');
+            const closeBtn = document.getElementById('closePaymentBtn');
+
+            btn.disabled = true;
+            txt.style.display = 'none';
+            loader.style.display = 'block';
+            closeBtn.style.display = 'none';
+
+            setTimeout(() => {
+                document.getElementById('paymentForm').style.display = 'none';
+                document.getElementById('paymentSuccess').style.display = 'block';
+                
+                cart = [];
+                saveCart();
+                updateCartUI();
+            }, 2000);
+        }
+
+        function closeModals() {
+            paymentModal.hide();
+            setTimeout(() => {
+                document.getElementById('paymentForm').reset();
+                document.getElementById('paymentForm').style.display = 'block';
+                document.getElementById('paymentSuccess').style.display = 'none';
+                document.getElementById('payButton').disabled = false;
+                document.getElementById('payText').style.display = 'block';
+                document.getElementById('paymentLoader').style.display = 'none';
+                document.getElementById('closePaymentBtn').style.display = 'block';
+                resetCardDisplay();
+            }, 500);
+        }
+
+        // 6. UTILITIES
+        function showToast(message) {
+            const toastContainer = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'custom-toast';
+            toast.innerHTML = `<span>✓</span> ${message}`;
+            toastContainer.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(100%)';
+                toast.style.transition = '0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function updateCardDisplay() {
+            const num = document.getElementById('cardNumber').value || '•••• •••• •••• ••••';
+            const name = document.getElementById('cardName').value || 'YOUR NAME';
+            const expiry = document.getElementById('cardExpiry').value || 'MM/YY';
+            
+            document.getElementById('displayCardNum').textContent = num;
+            document.getElementById('displayCardName').textContent = name;
+            document.getElementById('displayExpiry').textContent = expiry;
+        }
+
+        function resetCardDisplay() {
+            document.getElementById('displayCardNum').textContent = '•••• •••• •••• ••••';
+            document.getElementById('displayCardName').textContent = 'YOUR NAME';
+            document.getElementById('displayExpiry').textContent = 'MM/YY';
+        }
+    </script>
+</body>
+</html>
